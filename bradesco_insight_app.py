@@ -51,7 +51,7 @@ client = get_bigquery_client()
 # Certifique-se de que a pasta 'models' está no mesmo diretório que este script
 @st.cache_resource
 def load_models():
-    model_dir = "."
+    model_dir = "models"
     try:
         model_fraud_detection = joblib.load(os.path.join(model_dir, "fraud_detection_model.joblib"))
         kmeans_model = joblib.load(os.path.join(model_dir, "kmeans_segmentation_model.joblib"))
