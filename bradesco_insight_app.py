@@ -710,16 +710,18 @@ elif page == "Perfil do Cliente":
                 else:
                     st.write("Não foi possível encontrar as características médias para este segmento.")
 
-  if customer_id_input:
-
-if customer_id_input:
+ if customer_id_input:
     try:
-        customer_id = int(customer_id_input)
+        customer_id = int(customer_id_input)  # Tenta converter para int
         customer_profile = customers_df[customers_df['customer_id'] == customer_id]
 
         if not customer_profile.empty:
             st.subheader(f"Perfil Detalhado do Cliente ID: {customer_id}")
-            st.dataframe(customer_profile.drop(columns=['customer_id']).T.rename(columns={customer_profile.index[0]: 'Valor'}).astype(str))
+            st.dataframe(
+                customer_profile.drop(columns=['customer_id'])
+                .T.rename(columns={customer_profile.index[0]: 'Valor'})
+                .astype(str)
+            )
 
             segment = customer_profile['customer_segment'].iloc[0]
             st.write(f"**Segmento do Cliente:** `{segment}`")
@@ -735,32 +737,46 @@ if customer_id_input:
             if 'profession_encoded' in customers_df.columns:
                 features_for_segmentation.append('profession_encoded')
 
-            existing_features = [f for f in features_for_segmentation if f in customers_df.columns]
+            existing_features = [
+                f for f in features_for_segmentation if f in customers_df.columns
+            ]
             segment_analysis = customers_df.groupby('customer_segment')[existing_features].mean()
 
             if segment in segment_analysis.index:
-                segment_data = segment_analysis.loc[segment].to_frame().T.rename(columns={
-                    'age': 'Idade Média',
-                    'income': 'Renda Média',
-                    'avg_balance': 'Saldo Médio',
-                    'num_accounts': 'Nº de Contas',
-                    'total_spent': 'Total Gasto',
-                    'avg_transaction_amount': 'Valor Médio Transação',
-                    'num_transactions': 'Nº de Transações',
-                    'total_fraud_score': 'Pontuação Fraude Total',
-                    'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
-                    'num_products_held': 'Nº Produtos',
-                    'marital_status_encoded': 'Status Civil (Codificado)',
-                    'profession_encoded': 'Profissão (Codificado)'
-                })
+                segment_data = (
+                    segment_analysis.loc[segment]
+                    .to_frame()
+                    .T.rename(columns={
+                        'age': 'Idade Média',
+                        'income': 'Renda Média',
+                        'avg_balance': 'Saldo Médio',
+                        'num_accounts': 'Nº de Contas',
+                        'total_spent': 'Total Gasto',
+                        'avg_transaction_amount': 'Valor Médio Transação',
+                        'num_transactions': 'Nº de Transações',
+                        'total_fraud_score': 'Pontuação Fraude Total',
+                        'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
+                        'num_products_held': 'Nº Produtos',
+                        'marital_status_encoded': 'Status Civil (Codificado)',
+                        'profession_encoded': 'Profissão (Codificado)'
+                    })
+                )
                 st.dataframe(segment_data.round(2))
             else:
                 st.write("Não foi possível encontrar as características médias para este segmento.")
 
             st.subheader("Últimas Transações do Cliente:")
-            customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id].sort_values(by='transaction_date', ascending=False).head(10)
+            customer_transactions = transactions_df[
+                transactions_df['customer_id'] == customer_id
+            ].sort_values(by='transaction_date', ascending=False).head(10)
+
             if not customer_transactions.empty:
-                st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
+                st.dataframe(
+                    customer_transactions[[
+                        'transaction_date', 'amount', 'transaction_type',
+                        'merchant_category', 'fraud_score', 'is_fraudulent'
+                    ]]
+                )
             else:
                 st.write("Nenhuma transação encontrada para este cliente.")
         else:
