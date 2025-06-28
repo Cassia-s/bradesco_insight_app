@@ -710,17 +710,15 @@ elif page == "Perfil do Cliente":
                 else:
                     st.write("Não foi possível encontrar as características médias para este segmento.")
 
-
-                st.subheader("Últimas Transações do Cliente:")
-                customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id].sort_values(by='transaction_date', ascending=False).head(10)
-                if not customer_transactions.empty:
-                    st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
-                else:
-                    st.write("Nenhuma transação encontrada para este cliente.")
-
-            else: # <--- O 'else' aqui está indentado demais para o 'if customer_profile.empty'
-                st.warning("Cliente não encontrado. Por favor, verifique o ID.")
-        except ValueError: # <--- O 'except' aqui está indentado demais para o 'try'
-            st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
+            st.subheader("Últimas Transações do Cliente:")
+            customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id].sort_values(by='transaction_date', ascending=False).head(10)
+            if not customer_transactions.empty:
+                st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
+            else:
+                st.write("Nenhuma transação encontrada para este cliente.")
+        else:
+            st.warning("Cliente não encontrado. Por favor, verifique o ID.")
+    except ValueError:
+        st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
 
 # Corrigido acesso ao segredo do BigQuery via gcp_key
