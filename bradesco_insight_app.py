@@ -4,53 +4,54 @@ import joblib
 import os
 from google.cloud import bigquery
 from datetime import datetime
+import json # Importar json para trabalhar com as credenciais
 
 # --- Configurações do Google Cloud ---
 project_id = "bradesco-insight"
 dataset_id = "bradesco"
 location = "southamerica-east1" # Certifique-se que esta é a localização correta do seu dataset
 
-# ATENÇÃO: Para rodar localmente, você precisa ter as credenciais do GCP configuradas.
-# A maneira mais fácil é:
-# 1. Instalar a gcloud CLI: https://cloud.google.com/sdk/docs/install
-# 2. Autenticar: gcloud auth application-default login
-# OU, se estiver no Streamlit Community Cloud ou em outro ambiente onde as credenciais não são via gcloud CLI:
-# Você pode usar os segredos do Streamlit. Para isso, crie um arquivo secrets.toml na pasta .streamlit
-# Ex: .streamlit/secrets.toml
-# [gcp]
-# type = "service_account"
-# project_id = "bradesco-insight"
-# private_key_id = "..."
-# private_key = "-----BEGIN PRIVATE KEY-----..."
-# client_email = "..."
-# client_id = "..."
-# auth_uri = "..."
-# token_uri = "..."
-# auth_provider_x509_cert_url = "..."
-# client_x509_cert_url = "..."
+client = None # Inicializa client como None
 
-# E no código, você carregaria assim:
-# client = bigquery.Client.from_service_account_info(st.secrets["gcp"], project=project_id, location=location)
+# Tenta carregar as credenciais do Streamlit secrets
+if "gcp_key" in st.secrets:
+    try:
+        # Parseia a string JSON das credenciais
+        credentials_info = json.loads(st.secrets["gcp_key"]["json"])
 
-# Para uso local com gcloud CLI, a linha abaixo é suficiente:
-# client = bigquery.Client(project=project_id, location=location)
+        # Cria um arquivo temporário com as credenciais para o BigQuery Client
+        # Isso é necessário porque GOOGLE_APPLICATION_CREDENTIALS espera um caminho de arquivo.
+        temp_credentials_path = "gcp_credentials_temp.json"
+        with open(temp_credentials_path, "w") as f:
+            json.dump(credentials_info, f)
 
-# Inicializar o cliente BigQuery
-@st.cache_resource
-def get_bigquery_client():
-    # No Streamlit Cloud, sempre usaremos st.secrets
-    st.info("Conectando ao BigQuery usando Streamlit Secrets.")
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_credentials_path
+        client = bigquery.Client(project=project_id) # Esta linha instancia o cliente e atribui a 'client'
+        st.success("Credenciais do GCP carregadas com sucesso via Streamlit Secrets!")
+        
+        # Opcional: remover o arquivo temporário quando o script terminar (para limpeza)
+        # import atexit
+        # atexit.register(lambda: os.remove(temp_credentials_path) if os.path.exists(temp_credentials_path) else None)
 
-import json
-from google.oauth2 import service_account
+    except Exception as e:
+        st.error(f"Erro ao carregar credenciais do Streamlit Secrets: {e}")
+        st.info("Verifique o formato JSON em .streamlit/secrets.toml e se as chaves estão corretas.")
+else:
+    st.warning("Segredos do GCP não encontrados no Streamlit Secrets. Tentando autenticação local (gcloud CLI)...")
+    try:
+        # Tenta autenticação padrão do gcloud CLI para desenvolvimento local
+        client = bigquery.Client(project=project_id) # Esta linha também!
+        st.success("Autenticado no Google Cloud via gcloud CLI!")
+    except Exception as e:
+        st.error(f"Falha na autenticação do Google Cloud via gcloud CLI: {e}")
+        st.info("Por favor, verifique se suas credenciais estão configuradas corretamente para o gcloud CLI (execute 'gcloud auth application-default login').")
 
-key_dict = json.loads(st.secrets["gcp_key"]["json"])
-credentials = service_account.Credentials.from_service_account_info(key_dict)
-return bigquery.Client(credentials=credentials, project=key_dict["project_id"])
+if client is None:
+    st.error("Não foi possível autenticar no Google Cloud. O aplicativo não pode continuar.")
+    st.stop() # Interrompe a execução do Streamlit se não houver autenticação
 
-
-client = get_bigquery_client()
-
+# A partir daqui, o 'client' deve estar autenticado e pronto para ser usado.
+# REMOVEMOS AQUI O BLOCO DUPLICADO DE get_bigquery_client() que causava o SyntaxError.
 
 # --- Carregar Modelos e Transformadores ---
 # Certifique-se de que a pasta 'models' está no mesmo diretório que este script
@@ -334,7 +335,7 @@ elif page == "Perfil do Cliente":
 
             else:
                 st.warning("Cliente não encontrado. Por favor, verifique o ID.")
-        except ValueError:
-            st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
+            except ValueError:
+                st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
 
-# Corrigido acesso ao segredo do BigQuery via gcp_key
+# Corrigido acesso ao segredo do BigQuery via gcp_
