@@ -17,36 +17,13 @@ location = "southamerica-east1"
 def get_bigquery_client():
     st.info("Conectando ao BigQuery usando Streamlit Secrets.")
     
-    # Este bloco de código agora está corretamente indentado DENTRO da função.
-    # Lembre-se que seu secrets.toml no Streamlit Cloud DEVE estar assim:
-    # [gcp_key]
-    # json = """
-    # {
-    #   "type": "service_account",
-    #   "project_id": "bradesco-insight",
-    #   "private_key_id": "...",
-    #   "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-    #   "client_email": "...",
-    #   "client_id": "...",
-    #   "auth_uri": "...",
-    #   "token_uri": "...",
-    #   "auth_provider_x509_cert_url": "...",
-    #   "client_x509_cert_url": "...",
-    #   "universe_domain": "googleapis.com"
-    # }
-    # """
-    # (Ou seja, a chave "gcp_key" dentro de st.secrets deve conter o JSON COMPLETO como uma string)
-
     key_dict = json.loads(st.secrets["gcp_key"]["json"])
     credentials = service_account.Credentials.from_service_account_info(key_dict)
     return bigquery.Client(credentials=credentials, project=key_dict["project_id"])
 
-# A chamada da função get_bigquery_client() deve estar FORA da definição da função,
-# e sem indentação.
 client = get_bigquery_client()
 
 # --- Carregar Modelos e Transformadores ---
-# Certifique-se de que a pasta 'models' está no mesmo diretório que este script
 @st.cache_resource
 def load_models():
     model_dir = "models"
@@ -66,12 +43,12 @@ def load_models():
 model_fraud_detection, kmeans_model, scaler, fraud_encoders, customer_encoders, fraud_features_names = load_models()
 
 # --- Funções para buscar dados do BigQuery ---
-@st.cache_data(ttl=3600) # Cache por 1 hora
+@st.cache_data(ttl=3600)
 def get_customers_data():
     query = f"SELECT * FROM `{project_id}.{dataset_id}.customers_segmented`"
     return client.query(query).to_dataframe()
 
-@st.cache_data(ttl=3600) # Cache por 1 hora
+@st.cache_data(ttl=3600)
 def get_transactions_data():
     query = f"SELECT * FROM `{project_id}.{dataset_id}.transactions_with_fraud_score`"
     return client.query(query).to_dataframe()
@@ -99,7 +76,7 @@ if page == "Visão Geral do Dashboard":
         st.subheader("Análise de Fraudes")
         fraud_counts = transactions_df['is_fraudulent'].value_counts()
         st.metric(label="Total de Transações", value=len(transactions_df))
-        st.metric(label="Transações Fraudulentas Identificadas", value=fraud_counts.get(True, 0)) # Usando .get para lidar com caso onde não há True
+        st.metric(label="Transações Fraudulentas Identificadas", value=fraud_counts.get(True, 0))
         st.metric(label="Pontuação Média de Fraude", value=f"{transactions_df['fraud_score'].mean():.4f}")
 
         st.write("### Distribuição da Pontuação de Fraude")
@@ -114,29 +91,22 @@ if page == "Visão Geral do Dashboard":
         st.bar_chart(segment_counts)
         st.markdown("Este gráfico exibe a quantidade de clientes em cada segmento identificado pelo modelo de clusterização (K-Means). Cada segmento agrupa clientes com características similares.")
 
-        # --- INÍCIO DA MELHORIA: Características Médias por Segmento ---
         st.subheader("Características Médias por Segmento")
         st.markdown("Esta tabela mostra as características médias de cada segmento de cliente. Valores como 'Status Civil (Codificado)' e 'Profissão (Codificado)' são médias dos valores numéricos atribuídos pelos LabelEncoders durante o pré-processamento.")
 
-        # Definir as features que queremos analisar para cada segmento
         features_for_segmentation = [
             'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
             'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
             'num_fraudulent_transactions', 'num_products_held',
         ]
-        # Adicionar colunas codificadas se elas existirem no DataFrame customers_df
         if 'marital_status_encoded' in customers_df.columns:
             features_for_segmentation.append('marital_status_encoded')
         if 'profession_encoded' in customers_df.columns:
             features_for_segmentation.append('profession_encoded')
 
-        # Filtrar apenas as features que realmente existem no DataFrame customers_df
         existing_features_for_segmentation = [f for f in features_for_segmentation if f in customers_df.columns]
-
-        # Calcular as médias por segmento
         segment_analysis = customers_df.groupby('customer_segment')[existing_features_for_segmentation].mean()
         
-        # Renomear as colunas para melhor visualização na interface do Streamlit
         segment_analysis_display = segment_analysis.rename(columns={
             'age': 'Idade Média',
             'income': 'Renda Média',
@@ -151,16 +121,9 @@ if page == "Visão Geral do Dashboard":
             'marital_status_encoded': 'Status Civil (Codificado)',
             'profession_encoded': 'Profissão (Codificado)'
         })
-        
-        # Exibir a tabela no Streamlit, arredondando para 2 casas decimais para clareza
         st.dataframe(segment_analysis_display.round(2))
-        # --- FIM DA MELHORIA: Características Médias por Segmento ---
 
     st.subheader("Transações Fraudulentas Identificadas (Top 10 por Pontuação)")
-    # Assume que 'is_fraudulent' é True/False baseada no seu dataset ou um limite definido.
-    # Se 'is_fraudulent' não estiver no BigQuery, você pode criá-la aqui:
-    # transactions_df['is_fraudulent'] = transactions_df['fraud_score'] >= 0.8 # Exemplo de limite
-
     fraudulent_transactions_display = transactions_df[transactions_df['is_fraudulent'] == True].sort_values(by='fraud_score', ascending=False)
     if not fraudulent_transactions_display.empty:
         st.dataframe(fraudulent_transactions_display[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']].head(10))
@@ -174,14 +137,9 @@ elif page == "Análise de Transação (Simulação)":
     st.header("Simulador de Detecção de Fraudes")
     st.write("Insira os detalhes de uma transação para prever sua pontuação de fraude em tempo real.")
 
-    # Limitar as opções dos selectboxes aos N mais frequentes
-    # Ajuste os valores (20, 15) conforme achar melhor para a demo
     top_professions = customers_df['profession'].value_counts().head(20).index.tolist()
     top_merchant_categories = transactions_df['merchant_category'].value_counts().head(15).index.tolist()
     top_locations = transactions_df['location'].value_counts().head(15).index.tolist()
-    
-    # Adicionar "Outros" ou "Não Definido" para as opções, se desejar
-    # Ex: if 'Outros' not in top_professions: top_professions.append('Outros')
 
     with st.form("transaction_form"):
         st.subheader("Dados da Transação e do Cliente")
@@ -189,9 +147,9 @@ elif page == "Análise de Transação (Simulação)":
         with col1:
             amount = st.number_input("Valor da Transação (R$)", min_value=0.0, value=1000.0, format="%.2f")
             transaction_type = st.selectbox("Tipo de Transação", transactions_df['transaction_type'].unique())
-            merchant_category = st.selectbox("Categoria do Comerciante", top_merchant_categories) # USAR A LISTA FILTRADA
+            merchant_category = st.selectbox("Categoria do Comerciante", top_merchant_categories)
         with col2:
-            location = st.selectbox("Localização", top_locations) # USAR A LISTA FILTRADA
+            location = st.selectbox("Localização", top_locations)
             device_info = st.selectbox("Informações do Dispositivo", transactions_df['device_info'].unique())
             transaction_hour = st.slider("Hora da Transação (0-23h)", 0, 23, 15)
         with col3:
@@ -200,12 +158,11 @@ elif page == "Análise de Transação (Simulação)":
             balance = st.number_input("Saldo da Conta (R$)", min_value=0.0, value=20000.0, format="%.2f")
             customer_age = st.number_input("Idade do Cliente", min_value=0, value=30)
             marital_status = st.selectbox("Estado Civil", customers_df['marital_status'].unique())
-            profession = st.selectbox("Profissão", top_professions) # USAR A LISTA FILTRADA
+            profession = st.selectbox("Profissão", top_professions)
 
         submitted = st.form_submit_button("Analisar Risco de Fraude")
 
         if submitted:
-            # Criar DataFrame para a nova transação
             new_tx = pd.DataFrame([{
                 'amount': amount,
                 'income': income,
@@ -217,21 +174,17 @@ elif page == "Análise de Transação (Simulação)":
                 'merchant_category': merchant_category,
                 'location': location,
                 'device_info': device_info,
-                'account_type': 'Unknown', # Placeholder se não tiver no input direto (assumindo que não é um campo de input)
+                'account_type': 'Unknown',
                 'marital_status': marital_status,
                 'profession': profession,
-                'customer_segment': 0 # Placeholder: o modelo de fraude foi treinado sem customer_segment. Se você re-treinar para incluir, precisará calcular o segmento aqui. Por agora, 0 é um placeholder.
+                'customer_segment': 0
             }])
 
-            # Calcular amount_per_income
             new_tx['amount_per_income'] = new_tx['amount'] / (new_tx['income'] + 1e-6)
 
-            # Codificar variáveis categóricas usando os encoders salvos
             for col, encoder in fraud_encoders.items():
                 if col in new_tx.columns:
                     try:
-                        # O reshape(-1, 1) é necessário para que encoder.transform aceite um único valor
-                        # e retorna um array 1D, por isso o [0] no final
                         new_tx[f'{col}_encoded'] = encoder.transform([new_tx[col].iloc[0]])[0]
                     except ValueError:
                         new_tx[f'{col}_encoded'] = -1
@@ -250,15 +203,25 @@ elif page == "Análise de Transação (Simulação)":
 
             st.subheader("Resultado da Análise:")
             st.write(f"**Pontuação de Fraude:** `{score:.4f}`")
+
+            # --- INÍCIO DA MELHORIA: Feedback Detalhado no Simulador ---
+            st.markdown(f"A pontuação de fraude de **{score:.4f}** indica a probabilidade de esta transação ser fraudulenta. Quanto mais próximo de 1.0, maior o risco.")
+            
+            # Gráfico de barras simples para visualização da pontuação
+            st.progress(score, text=f"Risco de Fraude: {score:.2f}")
+
             if score >= 0.8:
-                st.error("🔴 ALTO RISCO DE FRAUDE")
+                st.error("🔴 **ALTO RISCO DE FRAUDE!** Esta transação apresenta um padrão de alto risco e pode ser fraudulenta. Recomenda-se investigação imediata.")
             elif score >= 0.4:
-                st.warning("🟠 MÉDIO RISCO DE FRAUDE")
+                st.warning("🟠 **MÉDIO RISCO DE FRAUDE!** Esta transação exige atenção e pode precisar de verificação adicional antes da aprovação.")
             else:
-                st.success("🟢 BAIXO RISCO DE FRAUDE")
+                st.success("🟢 **BAIXO RISCO DE FRAUDE.** Esta transação parece segura com base nos padrões atuais do modelo.")
+            # --- FIM DA MELHORIA: Feedback Detalhado no Simulador ---
 
 elif page == "Perfil do Cliente":
     st.header("Consulta de Perfil e Segmento do Cliente")
+    st.write("Insira o ID de um cliente para ver seu perfil detalhado e segmento de cliente.")
+
     customer_id_input = st.text_input("ID do Cliente (Ex: 1, 5, 10)", value="1")
 
     if customer_id_input:
