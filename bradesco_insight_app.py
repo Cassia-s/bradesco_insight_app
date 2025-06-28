@@ -335,8 +335,7 @@ elif page == "Perfil do Cliente":
 
             else:
                 st.warning("Cliente não encontrado. Por favor, verifique o ID.")
-        except ValueError:
-            st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
+            except ValueError:
+                st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
 
 # Corrigido acesso ao segredo do BigQuery via gcp_key
-
