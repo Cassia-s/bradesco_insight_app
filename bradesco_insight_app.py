@@ -38,14 +38,12 @@ location = "southamerica-east1" # Certifique-se que esta é a localização corr
 # Inicializar o cliente BigQuery
 @st.cache_resource
 def get_bigquery_client():
-    # Verifica se as credenciais estão nos segredos do Streamlit (para deploy)
-    if "gcp" in st.secrets:
-        return bigquery.Client.from_service_account_info(st.secrets["gcp"], project=project_id, location=location)
-    else:
-        # Para execução local com gcloud auth application-default login
-        return bigquery.Client(project=project_id, location=location)
+    # No Streamlit Cloud, sempre usaremos st.secrets
+    st.info("Conectando ao BigQuery usando Streamlit Secrets.")
+    return bigquery.Client.from_service_account_info(st.secrets["connections.gcp_bigquery"])
 
 client = get_bigquery_client()
+
 
 # --- Carregar Modelos e Transformadores ---
 # Certifique-se de que a pasta 'models' está no mesmo diretório que este script
