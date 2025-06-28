@@ -40,7 +40,14 @@ location = "southamerica-east1" # Certifique-se que esta é a localização corr
 def get_bigquery_client():
     # No Streamlit Cloud, sempre usaremos st.secrets
     st.info("Conectando ao BigQuery usando Streamlit Secrets.")
-    return bigquery.Client.from_service_account_info(st.secrets["connections.gcp_bigquery"])
+
+import json
+from google.oauth2 import service_account
+
+key_dict = json.loads(st.secrets["gcp_key"]["json"])
+credentials = service_account.Credentials.from_service_account_info(key_dict)
+return bigquery.Client(credentials=credentials, project=key_dict["project_id"])
+
 
 client = get_bigquery_client()
 
@@ -329,3 +336,5 @@ elif page == "Perfil do Cliente":
                 st.warning("Cliente não encontrado. Por favor, verifique o ID.")
         except ValueError:
             st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
+
+Corrigido acesso ao segredo do BigQuery via gcp_key
