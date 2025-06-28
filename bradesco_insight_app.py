@@ -711,6 +711,8 @@ elif page == "Perfil do Cliente":
                     st.write("Não foi possível encontrar as características médias para este segmento.")
 
   if customer_id_input:
+
+if customer_id_input:
     try:
         customer_id = int(customer_id_input)
         customer_profile = customers_df[customers_df['customer_id'] == customer_id]
@@ -752,7 +754,6 @@ elif page == "Perfil do Cliente":
                     'profession_encoded': 'Profissão (Codificado)'
                 })
                 st.dataframe(segment_data.round(2))
-                st.markdown(f"Esta tabela exibe as características médias que definem os clientes do **Segmento {segment}**.")
             else:
                 st.write("Não foi possível encontrar as características médias para este segmento.")
 
@@ -766,4 +767,5 @@ elif page == "Perfil do Cliente":
             st.warning("Cliente não encontrado. Por favor, verifique o ID.")
     except ValueError:
         st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
+
 # Corrigido acesso ao segredo do BigQuery via gcp_key
