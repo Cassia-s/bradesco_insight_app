@@ -710,61 +710,60 @@ elif page == "Perfil do Cliente":
                 else:
                     st.write("Não foi possível encontrar as características médias para este segmento.")
 
-    if customer_id_input:
-        try:
-            customer_id = int(customer_id_input) # Tenta converter para int
-            customer_profile = customers_df[customers_df['customer_id'] == customer_id]
+  if customer_id_input:
+    try:
+        customer_id = int(customer_id_input)
+        customer_profile = customers_df[customers_df['customer_id'] == customer_id]
 
-            if not customer_profile.empty:
-                st.subheader(f"Perfil Detalhado do Cliente ID: {customer_id}")
-                st.dataframe(customer_profile.drop(columns=['customer_id']).T.rename(columns={customer_profile.index[0]: 'Valor'}).astype(str))
+        if not customer_profile.empty:
+            st.subheader(f"Perfil Detalhado do Cliente ID: {customer_id}")
+            st.dataframe(customer_profile.drop(columns=['customer_id']).T.rename(columns={customer_profile.index[0]: 'Valor'}).astype(str))
 
-                segment = customer_profile['customer_segment'].iloc[0]
-                st.write(f"**Segmento do Cliente:** `{segment}`")
+            segment = customer_profile['customer_segment'].iloc[0]
+            st.write(f"**Segmento do Cliente:** `{segment}`")
 
-                st.subheader(f"Características Médias do Segmento {segment}:")
-                features_for_segmentation = [
-                    'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
-                    'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
-                    'num_fraudulent_transactions', 'num_products_held',
-                ]
-                if 'marital_status_encoded' in customers_df.columns:
-                    features_for_segmentation.append('marital_status_encoded')
-                if 'profession_encoded' in customers_df.columns:
-                    features_for_segmentation.append('profession_encoded')
+            st.subheader(f"Características Médias do Segmento {segment}:")
+            features_for_segmentation = [
+                'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
+                'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
+                'num_fraudulent_transactions', 'num_products_held',
+            ]
+            if 'marital_status_encoded' in customers_df.columns:
+                features_for_segmentation.append('marital_status_encoded')
+            if 'profession_encoded' in customers_df.columns:
+                features_for_segmentation.append('profession_encoded')
 
-                existing_features_for_segmentation = [f for f in features_for_segmentation if f in customers_df.columns]
-                segment_analysis = customers_df.groupby('customer_segment')[existing_features_for_segmentation].mean()
+            existing_features = [f for f in features_for_segmentation if f in customers_df.columns]
+            segment_analysis = customers_df.groupby('customer_segment')[existing_features].mean()
 
-                if segment in segment_analysis.index:
-                    segment_analysis_display_single = segment_analysis.loc[segment].to_frame().T.rename(columns={
-                        'age': 'Idade Média',
-                        'income': 'Renda Média',
-                        'avg_balance': 'Saldo Médio',
-                        'num_accounts': 'Nº de Contas',
-                        'total_spent': 'Total Gasto',
-                        'avg_transaction_amount': 'Valor Médio Transação',
-                        'num_transactions': 'Nº de Transações',
-                        'total_fraud_score': 'Pontuação Fraude Total',
-                        'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
-                        'num_products_held': 'Nº Produtos',
-                        'marital_status_encoded': 'Status Civil (Codificado)',
-                        'profession_encoded': 'Profissão (Codificado)'
-                    })
-                    st.dataframe(segment_analysis_display_single.round(2))
-                    st.markdown(f"Esta tabela exibe as características médias que definem os clientes do **Segmento {segment}**.")
-                else:
-                    st.write("Não foi possível encontrar as características médias para este segmento.")
-
-                st.subheader("Últimas Transações do Cliente:")
-                customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id].sort_values(by='transaction_date', ascending=False).head(10)
-                if not customer_transactions.empty:
-                    st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
-                else:
-                    st.write("Nenhuma transação encontrada para este cliente.")
+            if segment in segment_analysis.index:
+                segment_data = segment_analysis.loc[segment].to_frame().T.rename(columns={
+                    'age': 'Idade Média',
+                    'income': 'Renda Média',
+                    'avg_balance': 'Saldo Médio',
+                    'num_accounts': 'Nº de Contas',
+                    'total_spent': 'Total Gasto',
+                    'avg_transaction_amount': 'Valor Médio Transação',
+                    'num_transactions': 'Nº de Transações',
+                    'total_fraud_score': 'Pontuação Fraude Total',
+                    'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
+                    'num_products_held': 'Nº Produtos',
+                    'marital_status_encoded': 'Status Civil (Codificado)',
+                    'profession_encoded': 'Profissão (Codificado)'
+                })
+                st.dataframe(segment_data.round(2))
+                st.markdown(f"Esta tabela exibe as características médias que definem os clientes do **Segmento {segment}**.")
             else:
-                st.warning("Cliente não encontrado. Por favor, verifique o ID.")
-        except ValueError:
-            st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
+                st.write("Não foi possível encontrar as características médias para este segmento.")
 
+            st.subheader("Últimas Transações do Cliente:")
+            customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id].sort_values(by='transaction_date', ascending=False).head(10)
+            if not customer_transactions.empty:
+                st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
+            else:
+                st.write("Nenhuma transação encontrada para este cliente.")
+        else:
+            st.warning("Cliente não encontrado. Por favor, verifique o ID.")
+    except ValueError:
+        st.warning("ID do Cliente inválido. Por favor, insira um número inteiro.")
 # Corrigido acesso ao segredo do BigQuery via gcp_key
