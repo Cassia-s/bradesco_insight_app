@@ -42,12 +42,17 @@ model_fraud_detection, kmeans_model, scaler, fraud_encoders, customer_encoders, 
 @st.cache_data(ttl=3600)
 def get_customers_data():
     query = f"SELECT * FROM `{project_id}.{dataset_id}.customers_segmented`"
-    return client.query(query).to_dataframe()
+    df = client.query(query).to_dataframe()
+    df['customer_id'] = df['customer_id'].astype(str) # Garante que customer_id é string
+    return df
 
 @st.cache_data(ttl=3600)
 def get_transactions_data():
     query = f"SELECT * FROM `{project_id}.{dataset_id}.transactions_with_fraud_score`"
-    return client.query(query).to_dataframe()
+    df = client.query(query).to_dataframe()
+    df['customer_id'] = df['customer_id'].astype(str) # Garante que customer_id é string
+    df['account_id'] = df['account_id'].astype(str) # Garante que account_id é string
+    return df
 
 customers_df = get_customers_data()
 transactions_df = get_transactions_data()
@@ -110,7 +115,7 @@ if page == "Visão Geral do Dashboard":
     st.divider()
     st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude")
     top10 = transactions_df.sort_values(by='fraud_score', ascending=False).head(10)
-    st.dataframe(top10[['transaction_date', 'amount', 'merchant_category', 'fraud_score', 'is_fraudulent']])
+    st.dataframe(top10[['transaction_id', 'transaction_date', 'amount', 'merchant_category', 'fraud_score', 'is_fraudulent']])
 
 
 elif page == "Análise de Transação (Simulação)":
@@ -156,7 +161,7 @@ elif page == "Análise de Transação (Simulação)":
                 'account_type': 'Unknown',
                 'marital_status': marital_status,
                 'profession': profession,
-                'customer_segment': 0
+                'customer_segment': 0 # Este valor é um placeholder e não é usado no modelo de fraude
             }])
 
             input_data['amount_per_income'] = input_data['amount'] / (input_data['income'] + 1e-6)
@@ -164,14 +169,16 @@ elif page == "Análise de Transação (Simulação)":
             for col, encoder in fraud_encoders.items():
                 if col in input_data.columns:
                     try:
-                        input_data[f'{col}_encoded'] = encoder.transform([input_data[col].iloc[0]])[0]
+                        # Garante que o valor a ser transformado é uma lista, mesmo que seja um único item
+                        input_data[f'{col}_encoded'] = encoder.transform([str(input_data[col].iloc[0])])[0]
                     except ValueError:
+                        # Se a categoria não for conhecida pelo encoder, atribui -1 (ou um valor default)
                         input_data[f'{col}_encoded'] = -1
                 else:
                     input_data[f'{col}_encoded'] = -1
 
             X = input_data[[f for f in fraud_features_names if f in input_data.columns]]
-            X = X[fraud_features_names]
+            X = X[fraud_features_names] # Garante a ordem correta das features
 
             score = model_fraud_detection.predict_proba(X)[:, 1][0]
 
@@ -192,60 +199,60 @@ elif page == "Análise de Transação (Simulação)":
                 valor = input_data[col].values[0]
                 st.write(f"- **{col}**: {valor}")
 
-if page == "Perfil do Cliente":
+elif page == "Perfil do Cliente":
     st.header("👤 Perfil do Cliente")
-    customer_id_input = st.text_input("ID do Cliente", value="1")
+    # Não converte para int aqui, mantém como string para corresponder ao DataFrame
+    customer_id_input = st.text_input("ID do Cliente (Ex: CUST_00001)", value="CUST_00001")
 
     if customer_id_input:
-        try:
-            customer_id = int(customer_id_input)
-            customer_profile = customers_df[customers_df['customer_id'] == customer_id]
+        # Busca no DataFrame usando a string diretamente
+        customer_profile = customers_df[customers_df['customer_id'] == customer_id_input]
 
-            if not customer_profile.empty:
-                st.subheader(f"🧾 Dados do Cliente ID: {customer_id}")
-                st.dataframe(
-                    customer_profile.drop(columns=['customer_id'])
-                    .T.rename(columns={customer_profile.index[0]: 'Valor'})
-                    .astype(str)
+        if not customer_profile.empty:
+            st.subheader(f"🧾 Dados do Cliente ID: {customer_id_input}")
+            st.dataframe(
+                customer_profile.drop(columns=['customer_id'])
+                .T.rename(columns={customer_profile.index[0]: 'Valor'})
+                .astype(str)
+            )
+
+            segment = customer_profile['customer_segment'].iloc[0]
+            st.write(f"Segmento: `{segment}`")
+
+            features_for_segmentation = [
+                'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
+                'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
+                'num_fraudulent_transactions', 'num_products_held'
+            ]
+            if 'marital_status_encoded' in customers_df.columns:
+                features_for_segmentation.append('marital_status_encoded')
+            if 'profession_encoded' in customers_df.columns:
+                features_for_segmentation.append('profession_encoded')
+
+            existing = [f for f in features_for_segmentation if f in customers_df.columns]
+            segment_analysis = customers_df.groupby('customer_segment')[existing].mean()
+
+            if segment in segment_analysis.index:
+                segment_data = (
+                    segment_analysis.loc[segment].to_frame().T.rename(columns={
+                        'age': 'Idade Média', 'income': 'Renda Média', 'avg_balance': 'Saldo Médio',
+                        'num_accounts': 'Nº de Contas', 'total_spent': 'Total Gasto',
+                        'avg_transaction_amount': 'Valor Médio Transação', 'num_transactions': 'Nº Transações',
+                        'total_fraud_score': 'Pontuação Fraude Total',
+                        'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
+                        'num_products_held': 'Nº Produtos', 'marital_status_encoded': 'Status Civil Codificado',
+                        'profession_encoded': 'Profissão Codificada'
+                    })
                 )
+                st.dataframe(segment_data.round(2))
 
-                segment = customer_profile['customer_segment'].iloc[0]
-                st.write(f"Segmento: `{segment}`")
-
-                features_for_segmentation = [
-                    'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
-                    'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
-                    'num_fraudulent_transactions', 'num_products_held'
-                ]
-                if 'marital_status_encoded' in customers_df.columns:
-                    features_for_segmentation.append('marital_status_encoded')
-                if 'profession_encoded' in customers_df.columns:
-                    features_for_segmentation.append('profession_encoded')
-
-                existing = [f for f in features_for_segmentation if f in customers_df.columns]
-                segment_analysis = customers_df.groupby('customer_segment')[existing].mean()
-
-                if segment in segment_analysis.index:
-                    segment_data = (
-                        segment_analysis.loc[segment].to_frame().T.rename(columns={
-                            'age': 'Idade Média', 'income': 'Renda Média', 'avg_balance': 'Saldo Médio',
-                            'num_accounts': 'Nº de Contas', 'total_spent': 'Total Gasto',
-                            'avg_transaction_amount': 'Valor Médio Transação', 'num_transactions': 'Nº Transações',
-                            'total_fraud_score': 'Pontuação Fraude Total',
-                            'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
-                            'num_products_held': 'Nº Produtos', 'marital_status_encoded': 'Status Civil Codificado',
-                            'profession_encoded': 'Profissão Codificada'
-                        })
-                    )
-                    st.dataframe(segment_data.round(2))
-
-                st.subheader("📂 Últimas Transações do Cliente")
-                customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id].sort_values(by='transaction_date', ascending=False).head(10)
-                if not customer_transactions.empty:
-                    st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
-                else:
-                    st.write("Nenhuma transação encontrada para este cliente.")
+            st.subheader("📂 Últimas Transações do Cliente")
+            # Garante que a comparação é entre strings
+            customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id_input].sort_values(by='transaction_date', ascending=False).head(10)
+            if not customer_transactions.empty:
+                st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
             else:
-                st.warning("Cliente não encontrado. Verifique o ID.")
-        except ValueError:
-            st.warning("ID inválido. Insira um número inteiro.")
+                st.write("Nenhuma transação encontrada para este cliente.")
+        else:
+            st.warning("Cliente não encontrado. Verifique o ID.")
+    # Removido o bloco `except ValueError` pois o input não é mais convertido para int
