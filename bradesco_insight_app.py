@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# Por favor, certifique-se de que este arquivo está salvo com codificação UTF-8.
-
 import streamlit as st
 import pandas as pd
 import joblib
