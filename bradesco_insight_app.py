@@ -78,14 +78,14 @@ feature_translation_map = {
     'transaction_day_of_week': 'Dia da Semana (0=Segunda, 6=Domingo)',
     'customer_age_at_transaction': 'Idade do Cliente',
     'amount_per_income': 'Valor da Transação por Renda',
-    'transaction_type_encoded': 'Tipo de Transação (Codificado)',
-    'merchant_category_encoded': 'Categoria do Comerciante (Codificado)',
-    'location_encoded': 'Localização (Codificado)',
-    'device_info_encoded': 'Dispositivo (Codificado)',
-    'account_type_encoded': 'Tipo de Conta (Codificado)',
-    'marital_status_encoded': 'Estado Civil (Codificado)',
-    'profession_encoded': 'Profissão (Codificado)',
-    'customer_segment': 'Segmento do Cliente (Placeholder)'
+    'transaction_type_encoded': 'Tipo de Transação',
+    'merchant_category_encoded': 'Categoria do Comerciante',
+    'location_encoded': 'Localização',
+    'device_info_encoded': 'Dispositivo',
+    'account_type_encoded': 'Tipo de Conta',
+    'marital_status_encoded': 'Estado Civil',
+    'profession_encoded': 'Profissão',
+    'customer_segment': 'Segmento do Cliente'
 }
 
 if page == "Visão Geral do Dashboard":
@@ -128,9 +128,9 @@ if page == "Visão Geral do Dashboard":
         trans_fraud = fraud_counts.get(True, 0)
         taxa_fraude = (trans_fraud / total_transacoes * 100) if total_transacoes > 0 else 0
 
-        st.metric("💳 Total de Transações (Filtradas)", value=total_transacoes)
-        st.metric("🚨 Transações Fraudulentas (Filtradas)", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
-        st.metric("📈 Média da Pontuação de Fraude (Filtrada)", value=f"{filtered_tx['fraud_score'].mean():.4f}")
+        st.metric("💳 Total de Transações", value=total_transacoes)
+        st.metric("🚨 Transações Fraudulentas", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
+        st.metric("📈 Média da Pontuação de Fraude", value=f"{filtered_tx['fraud_score'].mean():.4f}")
 
         st.markdown("#### Distribuição da Pontuação de Fraude")
         # Cria o gráfico de barras com Matplotlib e rótulos
@@ -163,13 +163,13 @@ if page == "Visão Geral do Dashboard":
 
         # Clientes no filtro atual
         num_filtered_customers = len(filtered_customer_ids)
-        st.metric("🧑‍💼 Clientes Únicos (Filtrados)", value=num_filtered_customers)
+        st.metric("🧑‍💼 Clientes Únicos", value=num_filtered_customers)
         
         # Média de transações por cliente filtrado
         avg_tx_per_customer_filtered = total_transacoes / max(num_filtered_customers, 1)
-        st.metric("🧮 Média de Transações/Cliente (Filtrados)", value=f"{avg_tx_per_customer_filtered:.1f}")
+        st.metric("🧮 Média de Transações/Cliente", value=f"{avg_tx_per_customer_filtered:.1f}")
 
-        st.markdown("#### Distribuição por Segmento (Filtrados)")
+        st.markdown("#### Distribuição por Segmento")
         # Cria o gráfico de barras com Matplotlib e rótulos
         fig_segment_dist, ax_segment_dist = plt.subplots(figsize=(10, 6))
         segment_counts_filtered = customers_df[customers_df['customer_id'].isin(filtered_customer_ids)]['customer_segment'].value_counts().sort_index()
@@ -187,7 +187,7 @@ if page == "Visão Geral do Dashboard":
         * **Segmento 1, 2, 3...:** Os segmentos são grupos de clientes com comportamentos e características semelhantes, identificados pelo modelo de clusterização. A análise das médias abaixo ajuda a entender o perfil de cada segmento.
         """)
 
-        st.markdown("#### Médias por Segmento (Filtrados)")
+        st.markdown("#### Médias por Segmento")
         features_for_segmentation = [
             'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
             'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
@@ -205,7 +205,7 @@ if page == "Visão Geral do Dashboard":
         st.dataframe(segment_analysis)
 
     st.divider()
-    st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude (Filtradas)")
+    st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude")
     top10 = filtered_tx.sort_values(by='fraud_score', ascending=False).head(10)
     st.dataframe(top10[['transaction_id', 'transaction_date', 'amount', 'merchant_category', 'fraud_score', 'is_fraudulent']])
 
