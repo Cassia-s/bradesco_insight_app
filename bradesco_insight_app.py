@@ -126,9 +126,9 @@ if page == "Visão Geral do Dashboard":
         trans_fraud = fraud_counts.get(True, 0)
         taxa_fraude = (trans_fraud / total_transacoes * 100) if total_transacoes > 0 else 0
 
-        st.metric("💳 Total de Transações (Filtradas)", value=total_transacoes)
-        st.metric("🚨 Transações Fraudulentas (Filtradas)", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
-        st.metric("📈 Média da Pontuação de Fraude (Filtrada)", value=f"{filtered_tx['fraud_score'].mean():.4f}")
+        st.metric("💳 Total de Transações", value=total_transacoes)
+        st.metric("🚨 Transações Fraudulentas", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
+        st.metric("📈 Média da Pontuação de Fraude)", value=f"{filtered_tx['fraud_score'].mean():.4f}")
 
         st.markdown("#### Distribuição da Pontuação de Fraude")
         score_bins = pd.cut(filtered_tx['fraud_score'], bins=10)
@@ -177,7 +177,7 @@ if page == "Visão Geral do Dashboard":
         st.dataframe(segment_analysis)
 
     st.divider()
-    st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude (Filtradas)")
+    st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude")
     top10 = filtered_tx.sort_values(by='fraud_score', ascending=False).head(10)
     st.dataframe(top10[['transaction_id', 'transaction_date', 'amount', 'merchant_category', 'fraud_score', 'is_fraudulent']])
 
