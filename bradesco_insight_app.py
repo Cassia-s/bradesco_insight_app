@@ -6,6 +6,8 @@ import json
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from datetime import datetime
+import matplotlib.pyplot as plt # Importa matplotlib
+import seaborn as sns # Importa seaborn
 
 # --- Configurações do Google Cloud ---
 project_id = "bradesco-insight"
@@ -76,14 +78,14 @@ feature_translation_map = {
     'transaction_day_of_week': 'Dia da Semana (0=Segunda, 6=Domingo)',
     'customer_age_at_transaction': 'Idade do Cliente',
     'amount_per_income': 'Valor da Transação por Renda',
-    'transaction_type_encoded': 'Tipo de Transação',
-    'merchant_category_encoded': 'Categoria do Comerciante',
-    'location_encoded': 'Localização',
-    'device_info_encoded': 'Dispositivo',
-    'account_type_encoded': 'Tipo de Conta',
-    'marital_status_encoded': 'Estado Civil',
-    'profession_encoded': 'Profissão',
-    'customer_segment': 'Segmento do Cliente'
+    'transaction_type_encoded': 'Tipo de Transação (Codificado)',
+    'merchant_category_encoded': 'Categoria do Comerciante (Codificado)',
+    'location_encoded': 'Localização (Codificado)',
+    'device_info_encoded': 'Dispositivo (Codificado)',
+    'account_type_encoded': 'Tipo de Conta (Codificado)',
+    'marital_status_encoded': 'Estado Civil (Codificado)',
+    'profession_encoded': 'Profissão (Codificado)',
+    'customer_segment': 'Segmento do Cliente (Placeholder)'
 }
 
 if page == "Visão Geral do Dashboard":
@@ -126,15 +128,28 @@ if page == "Visão Geral do Dashboard":
         trans_fraud = fraud_counts.get(True, 0)
         taxa_fraude = (trans_fraud / total_transacoes * 100) if total_transacoes > 0 else 0
 
-        st.metric("💳 Total de Transações", value=total_transacoes)
-        st.metric("🚨 Transações Fraudulentas", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
-        st.metric("📈 Média da Pontuação de Fraude", value=f"{filtered_tx['fraud_score'].mean():.4f}")
+        st.metric("💳 Total de Transações (Filtradas)", value=total_transacoes)
+        st.metric("🚨 Transações Fraudulentas (Filtradas)", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
+        st.metric("📈 Média da Pontuação de Fraude (Filtrada)", value=f"{filtered_tx['fraud_score'].mean():.4f}")
 
         st.markdown("#### Distribuição da Pontuação de Fraude")
+        # Cria o gráfico de barras com Matplotlib e rótulos
+        fig_fraud_score, ax_fraud_score = plt.subplots(figsize=(10, 6))
         score_bins = pd.cut(filtered_tx['fraud_score'], bins=10)
         bin_counts = score_bins.value_counts().sort_index()
-        bin_counts.index = bin_counts.index.astype(str)  # converte Interval para string
-        st.bar_chart(bin_counts)
+        
+        # Converte os intervalos para strings mais amigáveis
+        bin_labels = [f"[{interval.left:.1f}, {interval.right:.1f}]" for interval in bin_counts.index]
+        
+        bars = ax_fraud_score.bar(bin_labels, bin_counts.values, color='skyblue')
+        ax_fraud_score.set_title('Distribuição da Pontuação de Fraude (Transações Filtradas)')
+        ax_fraud_score.set_xlabel('Pontuação de Fraude (Intervalos)')
+        ax_fraud_score.set_ylabel('Número de Transações')
+        ax_fraud_score.tick_params(axis='x', rotation=45)
+        plt.tight_layout()
+        plt.bar_label(bars, fmt='%d') # Adiciona rótulos nas barras
+        st.pyplot(fig_fraud_score)
+        plt.clf() # Limpa o gráfico para o próximo
 
         if trans_fraud > 0:
             top_merchant_fraud = filtered_tx[filtered_tx['is_fraudulent'] == True]['merchant_category'].value_counts().idxmax()
@@ -143,23 +158,36 @@ if page == "Visão Geral do Dashboard":
     with col2:
         st.subheader("👥 Segmentação de Clientes")
         
-        # Total de clientes na base original
+        # Total de clientes na base original (não filtrada)
         st.metric("Total de Clientes na Base", value=len(customers_df))
 
         # Clientes no filtro atual
         num_filtered_customers = len(filtered_customer_ids)
-        st.metric("🧑‍💼 Clientes Únicos", value=num_filtered_customers)
+        st.metric("🧑‍💼 Clientes Únicos (Filtrados)", value=num_filtered_customers)
         
         # Média de transações por cliente filtrado
         avg_tx_per_customer_filtered = total_transacoes / max(num_filtered_customers, 1)
-        st.metric("🧮 Média de Transações/Cliente", value=f"{avg_tx_per_customer_filtered:.1f}")
+        st.metric("🧮 Média de Transações/Cliente (Filtrados)", value=f"{avg_tx_per_customer_filtered:.1f}")
 
-        st.markdown("#### Distribuição por Segmento")
-        # Conta os segmentos dos clientes filtrados
+        st.markdown("#### Distribuição por Segmento (Filtrados)")
+        # Cria o gráfico de barras com Matplotlib e rótulos
+        fig_segment_dist, ax_segment_dist = plt.subplots(figsize=(10, 6))
         segment_counts_filtered = customers_df[customers_df['customer_id'].isin(filtered_customer_ids)]['customer_segment'].value_counts().sort_index()
-        st.bar_chart(segment_counts_filtered)
+        
+        bars_segment = ax_segment_dist.bar(segment_counts_filtered.index.astype(str), segment_counts_filtered.values, color='lightgreen')
+        ax_segment_dist.set_title('Distribuição de Clientes por Segmento (Clientes Filtrados)')
+        ax_segment_dist.set_xlabel('Segmento do Cliente')
+        ax_segment_dist.set_ylabel('Número de Clientes')
+        plt.tight_layout()
+        plt.bar_label(bars_segment, fmt='%d') # Adiciona rótulos nas barras
+        st.pyplot(fig_segment_dist)
+        plt.clf() # Limpa o gráfico para o próximo
 
-        st.markdown("#### Médias por Segmento")
+        st.markdown("""
+        * **Segmento 1, 2, 3...:** Os segmentos são grupos de clientes com comportamentos e características semelhantes, identificados pelo modelo de clusterização. A análise das médias abaixo ajuda a entender o perfil de cada segmento.
+        """)
+
+        st.markdown("#### Médias por Segmento (Filtrados)")
         features_for_segmentation = [
             'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
             'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
@@ -177,7 +205,7 @@ if page == "Visão Geral do Dashboard":
         st.dataframe(segment_analysis)
 
     st.divider()
-    st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude")
+    st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude (Filtradas)")
     top10 = filtered_tx.sort_values(by='fraud_score', ascending=False).head(10)
     st.dataframe(top10[['transaction_id', 'transaction_date', 'amount', 'merchant_category', 'fraud_score', 'is_fraudulent']])
 
@@ -213,7 +241,7 @@ elif page == "Análise de Transação (Simulação)":
 
     # Mapeamento de estado civil para português (se o BQ ainda tiver em inglês)
     marital_status_map = {
-        'Single': 'Solteiro(a)', 'Married': 'Casado(a)', 'Divorced': 'Divorciado(a)',
+        'Single': 'Solteiro(a)', 'Married': 'Casado(a)', 'Divorciado(a)',
         'Widowed': 'Viúvo(a)', 'Unknown': 'Desconhecido'
     }
     # Obtém os estados civis únicos do DataFrame e os mapeia
@@ -249,13 +277,6 @@ elif page == "Análise de Transação (Simulação)":
 
         if submitted:
             # Reverte as seleções para o formato original (se houver mapeamento) para o encoder
-            # Se os encoders foram treinados com os termos em português, não precisa reverter.
-            # Assumindo que os encoders foram treinados com os termos que vêm do BigQuery.
-            # Se o BigQuery tem "Compra", o encoder foi treinado com "Compra".
-            # Se o BigQuery tem "Purchase", o encoder foi treinado com "Purchase".
-            # O mapeamento aqui é apenas para a exibição no selectbox.
-            
-            # Reverte para o nome original para passar para o encoder, se houver mapeamento
             original_transaction_type = next((k for k, v in transaction_types_map.items() if v == transaction_type), transaction_type)
             original_marital_status = next((k for k, v in marital_status_map.items() if v == marital_status), marital_status)
             original_device_info = next((k for k, v in device_info_map.items() if v == device_info), device_info)
@@ -326,7 +347,7 @@ elif page == "Perfil do Cliente":
         if not customer_profile.empty:
             st.subheader(f"🧾 Dados do Cliente ID: {customer_id_input}")
             # Exibe o perfil do cliente, garantindo que 'age' seja inteiro na exibição
-            display_profile = customer_profile.drop(columns=['customer_id']).T.rename(columns={customer_profile.index[0]: 'Valor'})
+            display_profile = customer_profile.drop(columns=['customer_id'])
             
             # Mapeamento para nomes de colunas no perfil do cliente
             profile_col_translation_map = {
@@ -337,9 +358,25 @@ elif page == "Perfil do Cliente":
                 'marital_status': 'Estado Civil',
                 'profession': 'Profissão',
                 'income': 'Renda',
-                'customer_segment': 'Segmento do Cliente'
+                'customer_segment': 'Segmento do Cliente',
+                'avg_balance': 'Saldo Médio',
+                'num_accounts': 'Nº de Contas',
+                'total_spent': 'Total Gasto',
+                'avg_transaction_amount': 'Valor Médio Transação',
+                'num_transactions': 'Nº Transações',
+                'total_fraud_score': 'Pontuação Fraude Total',
+                'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
+                'num_products_held': 'Nº Produtos',
+                'marital_status_encoded': 'Estado Civil (Codificado)',
+                'profession_encoded': 'Profissão (Codificada)'
             }
-            display_profile.index = display_profile.index.map(profile_col_translation_map).fillna(display_profile.index)
+            # Transpõe e renomeia as colunas para exibição
+            display_profile = display_profile.T.rename(columns={display_profile.index[0]: 'Valor'})
+            
+            # CORREÇÃO AQUI: Usa lambda com .get() para mapear e manter o original se não houver tradução
+            display_profile.index = display_profile.index.map(
+                lambda x: profile_col_translation_map.get(x, x)
+            )
             
             st.dataframe(display_profile.astype(str)) # Converte para string para exibição consistente
 
