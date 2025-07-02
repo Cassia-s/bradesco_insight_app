@@ -128,7 +128,7 @@ if page == "Visão Geral do Dashboard":
 
         st.metric("💳 Total de Transações", value=total_transacoes)
         st.metric("🚨 Transações Fraudulentas", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
-        st.metric("📈 Média da Pontuação de Fraude)", value=f"{filtered_tx['fraud_score'].mean():.4f}")
+        st.metric("📈 Média da Pontuação de Fraude", value=f"{filtered_tx['fraud_score'].mean():.4f}")
 
         st.markdown("#### Distribuição da Pontuação de Fraude")
         score_bins = pd.cut(filtered_tx['fraud_score'], bins=10)
