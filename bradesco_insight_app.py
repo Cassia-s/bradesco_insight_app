@@ -175,7 +175,7 @@ if page == "Visão Geral do Dashboard":
         segment_counts_filtered = customers_df[customers_df['customer_id'].isin(filtered_customer_ids)]['customer_segment'].value_counts().sort_index()
         
         bars_segment = ax_segment_dist.bar(segment_counts_filtered.index.astype(str), segment_counts_filtered.values, color='lightgreen')
-        ax_segment_dist.set_title('Distribuição de Clientes por Segmento (Clientes Filtrados)')
+        ax_segment_dist.set_title('Distribuição de Clientes por Segmento')
         ax_segment_dist.set_xlabel('Segmento do Cliente')
         ax_segment_dist.set_ylabel('Número de Clientes')
         plt.tight_layout()
