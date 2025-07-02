@@ -43,15 +43,18 @@ model_fraud_detection, kmeans_model, scaler, fraud_encoders, customer_encoders, 
 def get_customers_data():
     query = f"SELECT * FROM `{project_id}.{dataset_id}.customers_segmented`"
     df = client.query(query).to_dataframe()
-    df['customer_id'] = df['customer_id'].astype(str) # Garante que customer_id é string
+    df['customer_id'] = df['customer_id'].astype(str)
+    df['age'] = df['age'].round(0).astype(int)  # Corrige idade quebrada
     return df
 
 @st.cache_data(ttl=3600)
 def get_transactions_data():
     query = f"SELECT * FROM `{project_id}.{dataset_id}.transactions_with_fraud_score`"
     df = client.query(query).to_dataframe()
-    df['customer_id'] = df['customer_id'].astype(str) # Garante que customer_id é string
-    df['account_id'] = df['account_id'].astype(str) # Garante que account_id é string
+    df['customer_id'] = df['customer_id'].astype(str)
+    df['account_id'] = df['account_id'].astype(str)
+    df['transaction_date'] = pd.to_datetime(df['transaction_date'], errors='coerce')
+    df = df.dropna(subset=['transaction_date'])
     return df
 
 customers_df = get_customers_data()
@@ -67,31 +70,52 @@ page = st.sidebar.radio("Escolha uma opção:", ["Visão Geral do Dashboard", "A
 if page == "Visão Geral do Dashboard":
     st.header("📊 Visão Geral do Sistema")
     st.divider()
-    
+
+    # Filtros na lateral
+    with st.sidebar:
+        st.subheader("Filtros")
+        min_date, max_date = transactions_df['transaction_date'].min(), transactions_df['transaction_date'].max()
+        date_range = st.date_input("Filtrar por período:", [min_date.date(), max_date.date()])
+
+        segmentos = customers_df['customer_segment'].sort_values().unique().tolist()
+        selected_segmentos = st.multiselect("Filtrar por segmento:", segmentos, default=segmentos)
+
+    # Aplica filtros
+    filtered_tx = transactions_df.copy()
+    filtered_tx = filtered_tx[
+        (filtered_tx['transaction_date'].dt.date >= date_range[0]) &
+        (filtered_tx['transaction_date'].dt.date <= date_range[1])
+    ]
+    filtered_tx = filtered_tx[filtered_tx['customer_id'].isin(customers_df[customers_df['customer_segment'].isin(selected_segmentos)]['customer_id'])]
+
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("🔐 Análise de Fraudes")
-        fraud_counts = transactions_df['is_fraudulent'].value_counts()
-        total_transacoes = len(transactions_df)
+        fraud_counts = filtered_tx['is_fraudulent'].value_counts()
+        total_transacoes = len(filtered_tx)
         trans_fraud = fraud_counts.get(True, 0)
         taxa_fraude = (trans_fraud / total_transacoes * 100) if total_transacoes > 0 else 0
 
         st.metric("💳 Total de Transações", value=total_transacoes)
         st.metric("🚨 Transações Fraudulentas", value=trans_fraud, delta=f"{taxa_fraude:.1f}%")
-        st.metric("📈 Média da Pontuação de Fraude", value=f"{transactions_df['fraud_score'].mean():.4f}")
+        st.metric("📈 Média da Pontuação de Fraude", value=f"{filtered_tx['fraud_score'].mean():.4f}")
 
         st.markdown("#### Distribuição da Pontuação de Fraude")
-        st.bar_chart(transactions_df['fraud_score'].value_counts(bins=10).sort_index())
+        score_bins = pd.cut(filtered_tx['fraud_score'], bins=10)
+        bin_counts = score_bins.value_counts().sort_index()
+        bin_counts.index = bin_counts.index.astype(str)  # converte Interval para string
+        st.bar_chart(bin_counts)
 
-        top_merchant_fraud = transactions_df[transactions_df['is_fraudulent'] == True]['merchant_category'].value_counts().idxmax()
-        st.markdown(f"📌 Categoria mais associada à fraude: **{top_merchant_fraud}**")
+        if trans_fraud > 0:
+            top_merchant_fraud = filtered_tx[filtered_tx['is_fraudulent'] == True]['merchant_category'].value_counts().idxmax()
+            st.markdown(f"📌 Categoria mais associada à fraude: **{top_merchant_fraud}**")
 
     with col2:
         st.subheader("👥 Segmentação de Clientes")
-        segment_counts = customers_df['customer_segment'].value_counts().sort_index()
-        st.metric("🧑‍💼 Clientes Segmentados", value=len(customers_df))
-        st.metric("🧮 Média de Transações/Cliente", value=f"{total_transacoes / len(customers_df):.1f}")
+        segment_counts = customers_df[customers_df['customer_segment'].isin(selected_segmentos)]['customer_segment'].value_counts().sort_index()
+        st.metric("🧑‍💼 Clientes Segmentados", value=len(segment_counts))
+        st.metric("🧮 Média de Transações/Cliente", value=f"{total_transacoes / max(len(segment_counts),1):.1f}")
 
         st.markdown("#### Distribuição por Segmento")
         st.bar_chart(segment_counts)
@@ -108,14 +132,18 @@ if page == "Visão Geral do Dashboard":
             features_for_segmentation.append('profession_encoded')
 
         existing = [f for f in features_for_segmentation if f in customers_df.columns]
-        segment_analysis = customers_df.groupby('customer_segment')[existing].mean().round(2)
-
+        segment_analysis = customers_df[customers_df['customer_segment'].isin(selected_segmentos)].groupby('customer_segment')[existing].mean().round(2)
         st.dataframe(segment_analysis)
 
     st.divider()
     st.subheader("🔎 Top 10 Transações com Maior Risco de Fraude")
-    top10 = transactions_df.sort_values(by='fraud_score', ascending=False).head(10)
+    top10 = filtered_tx.sort_values(by='fraud_score', ascending=False).head(10)
     st.dataframe(top10[['transaction_id', 'transaction_date', 'amount', 'merchant_category', 'fraud_score', 'is_fraudulent']])
+
+    st.markdown("""
+    > A **pontuação de fraude** (fraud_score) representa a **probabilidade de uma transação ser fraudulenta**, com base no modelo Random Forest. 
+    > Pontuações próximas de 1.0 indicam maior risco.
+    """)
 
 
 elif page == "Análise de Transação (Simulação)":
