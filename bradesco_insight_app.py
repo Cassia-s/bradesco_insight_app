@@ -76,14 +76,14 @@ feature_translation_map = {
     'transaction_day_of_week': 'Dia da Semana (0=Segunda, 6=Domingo)',
     'customer_age_at_transaction': 'Idade do Cliente',
     'amount_per_income': 'Valor da Transação por Renda',
-    'transaction_type_encoded': 'Tipo de Transação (Codificado)',
-    'merchant_category_encoded': 'Categoria do Comerciante (Codificado)',
-    'location_encoded': 'Localização (Codificado)',
-    'device_info_encoded': 'Dispositivo (Codificado)',
-    'account_type_encoded': 'Tipo de Conta (Codificado)',
-    'marital_status_encoded': 'Estado Civil (Codificado)',
-    'profession_encoded': 'Profissão (Codificado)',
-    'customer_segment': 'Segmento do Cliente (Placeholder)'
+    'transaction_type_encoded': 'Tipo de Transação',
+    'merchant_category_encoded': 'Categoria do Comerciante',
+    'location_encoded': 'Localização',
+    'device_info_encoded': 'Dispositivo',
+    'account_type_encoded': 'Tipo de Conta',
+    'marital_status_encoded': 'Estado Civil',
+    'profession_encoded': 'Profissão',
+    'customer_segment': 'Segmento do Cliente'
 }
 
 if page == "Visão Geral do Dashboard":
