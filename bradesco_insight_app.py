@@ -368,8 +368,8 @@ elif page == "Perfil do Cliente":
                 'total_fraud_score': 'Pontuação Fraude Total',
                 'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
                 'num_products_held': 'Nº Produtos',
-                'marital_status_encoded': 'Estado Civil (Codificado)',
-                'profession_encoded': 'Profissão (Codificada)'
+                'marital_status_encoded': 'Estado Civil',
+                'profession_encoded': 'Profissão '
             }
             # Transpõe e renomeia as colunas para exibição
             display_profile = display_profile.T.rename(columns={display_profile.index[0]: 'Valor'})
@@ -406,8 +406,8 @@ elif page == "Perfil do Cliente":
                         'avg_transaction_amount': 'Valor Médio Transação', 'num_transactions': 'Nº Transações',
                         'total_fraud_score': 'Pontuação Fraude Total',
                         'num_fraudulent_transactions': 'Nº Transações Fraudulentas',
-                        'num_products_held': 'Nº Produtos', 'marital_status_encoded': 'Estado Civil (Codificado)',
-                        'profession_encoded': 'Profissão (Codificada)'
+                        'num_products_held': 'Nº Produtos', 'marital_status_encoded': 'Estado Civil',
+                        'profession_encoded': 'Profissão'
                     })
                 )
                 st.dataframe(segment_data.round(2))
