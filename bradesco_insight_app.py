@@ -148,18 +148,18 @@ if page == "Visão Geral do Dashboard":
 
         # Clientes no filtro atual
         num_filtered_customers = len(filtered_customer_ids)
-        st.metric("🧑‍💼 Clientes Únicos (Filtrados)", value=num_filtered_customers)
+        st.metric("🧑‍💼 Clientes Únicos", value=num_filtered_customers)
         
         # Média de transações por cliente filtrado
         avg_tx_per_customer_filtered = total_transacoes / max(num_filtered_customers, 1)
-        st.metric("🧮 Média de Transações/Cliente (Filtrados)", value=f"{avg_tx_per_customer_filtered:.1f}")
+        st.metric("🧮 Média de Transações/Cliente", value=f"{avg_tx_per_customer_filtered:.1f}")
 
-        st.markdown("#### Distribuição por Segmento (Filtrados)")
+        st.markdown("#### Distribuição por Segmento")
         # Conta os segmentos dos clientes filtrados
         segment_counts_filtered = customers_df[customers_df['customer_id'].isin(filtered_customer_ids)]['customer_segment'].value_counts().sort_index()
         st.bar_chart(segment_counts_filtered)
 
-        st.markdown("#### Médias por Segmento (Filtrados)")
+        st.markdown("#### Médias por Segmento")
         features_for_segmentation = [
             'age', 'income', 'avg_balance', 'num_accounts', 'total_spent',
             'avg_transaction_amount', 'num_transactions', 'total_fraud_score',
