@@ -6,8 +6,8 @@ import json
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from datetime import datetime
-import matplotlib.pyplot as plt # Importa matplotlib
-import seaborn as sns # Importa seaborn
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # --- Configurações do Google Cloud ---
 project_id = "bradesco-insight"
@@ -415,7 +415,7 @@ elif page == "Perfil do Cliente":
             # Garante que a comparação é entre strings
             customer_transactions = transactions_df[transactions_df['customer_id'] == customer_id_input].sort_values(by='transaction_date', ascending=False).head(10)
             if not customer_transactions.empty:
-                st.dataframe(customer_transactions[['transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
+                st.dataframe(customer_transactions[['transaction_id', 'transaction_date', 'amount', 'transaction_type', 'merchant_category', 'fraud_score', 'is_fraudulent']])
             else:
                 st.write("Nenhuma transação encontrada para este cliente.")
         else:
