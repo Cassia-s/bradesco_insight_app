@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# Por favor, certifique-se de que este arquivo está salvo com codificação UTF-8.
+
 import streamlit as st
 import pandas as pd
 import joblib
@@ -230,56 +233,57 @@ elif page == "Análise de Transação (Simulação)":
         if pd.notna(loc) and isinstance(loc, str) and loc.strip().lower() not in ['unknown', '']
     ])
     
-    # Mapeamento de tipos de transação para português (se o BQ ainda tiver em inglês)
+    # Mapeamento de tipos de transação para o formato original (inglês) para evitar erros de codificação
+    # Se os dados no BigQuery já estão em português, remova este mapeamento e use .unique() diretamente
     transaction_types_map = {
-        'Purchase': 'Compra', 'Withdrawal': 'Saque', 'Deposit': 'Depósito',
-        'Transfer': 'Transferência', 'Online Payment': 'Pagamento Online',
-        'Bill Payment': 'Pagamento de Conta', 'Unknown': 'Desconhecido'
+        'Purchase': 'Purchase', 'Withdrawal': 'Withdrawal', 'Deposit': 'Deposit',
+        'Transfer': 'Transfer', 'Online Payment': 'Online Payment',
+        'Bill Payment': 'Bill Payment', 'Unknown': 'Unknown'
     }
-    # Obtém os tipos de transação únicos do DataFrame e os mapeia
-    transaction_types_pt = [transaction_types_map.get(tt, tt) for tt in transactions_df['transaction_type'].unique()]
+    # Obtém os tipos de transação únicos do DataFrame e os mapeia para os termos originais
+    transaction_types_original = [transaction_types_map.get(tt, tt) for tt in transactions_df['transaction_type'].unique()]
 
-    # Mapeamento de estado civil para português (se o BQ ainda tiver em inglês)
+    # Mapeamento de estado civil para o formato original (inglês)
     marital_status_map = {
-        'Single': 'Solteiro(a)', 'Married': 'Casado(a)', 'Divorciado(a)',
-        'Widowed': 'Viúvo(a)', 'Unknown': 'Desconhecido'
+        'Single': 'Single', 'Married': 'Married', 'Divorced': 'Divorced',
+        'Widowed': 'Widowed', 'Unknown': 'Unknown'
     }
-    # Obtém os estados civis únicos do DataFrame e os mapeia
-    marital_status_pt = [marital_status_map.get(ms, ms) for ms in customers_df['marital_status'].unique()]
+    # Obtém os estados civis únicos do DataFrame e os mapeia para os termos originais
+    marital_status_original = [marital_status_map.get(ms, ms) for ms in customers_df['marital_status'].unique()]
     
-    # Mapeamento de dispositivo para português (se o BQ ainda tiver em inglês)
+    # Mapeamento de dispositivo para o formato original (inglês)
     device_info_map = {
-        'Mobile': 'Celular', 'Desktop': 'Computador', 'POS Terminal': 'Terminal POS',
-        'ATM': 'Caixa Eletrônico', 'Tablet': 'Tablet', 'Unknown': 'Desconhecido'
+        'Mobile': 'Mobile', 'Desktop': 'Desktop', 'POS Terminal': 'POS Terminal',
+        'ATM': 'ATM', 'Tablet': 'Tablet', 'Unknown': 'Unknown'
     }
-    device_info_pt = [device_info_map.get(di, di) for di in transactions_df['device_info'].unique()]
+    device_info_original = [device_info_map.get(di, di) for di in transactions_df['device_info'].unique()]
 
 
     with st.form("transaction_form"):
         col1, col2, col3 = st.columns(3)
         with col1:
             amount = st.number_input("💵 Valor da Transação", min_value=0.0, value=1000.0)
-            transaction_type = st.selectbox("Tipo de Transação", transaction_types_pt)
+            transaction_type = st.selectbox("Tipo de Transação", transaction_types_original)
             merchant_category = st.selectbox("Categoria do Comerciante", top_categories)
         with col2:
             location = st.selectbox("Localização", all_locations)
-            device_info = st.selectbox("Dispositivo", device_info_pt)
+            device_info = st.selectbox("Dispositivo", device_info_original)
             transaction_hour = st.slider("Hora da Transação", 0, 23, 15)
         with col3:
             transaction_day_of_week = st.slider("Dia da Semana (0=Segunda, 6=Domingo)", 0, 6, 2)
             income = st.number_input("Renda do Cliente", min_value=0.0, value=5000.0)
             balance = st.number_input("Saldo da Conta", min_value=0.0, value=20000.0)
             customer_age_at_transaction = st.number_input("Idade do Cliente", min_value=0, value=30)
-            marital_status = st.selectbox("Estado Civil", marital_status_pt)
+            marital_status = st.selectbox("Estado Civil", marital_status_original)
             profession = st.selectbox("Profissão", top_professions)
 
         submitted = st.form_submit_button("🔎 Analisar Risco de Fraude")
 
         if submitted:
-            # Reverte as seleções para o formato original (se houver mapeamento) para o encoder
-            original_transaction_type = next((k for k, v in transaction_types_map.items() if v == transaction_type), transaction_type)
-            original_marital_status = next((k for k, v in marital_status_map.items() if v == marital_status), marital_status)
-            original_device_info = next((k for k, v in device_info_map.items() if v == device_info), device_info)
+            # Não precisa reverter, pois os selectbox já estão usando os termos originais
+            # original_transaction_type = next((k for k, v in transaction_types_map.items() if v == transaction_type), transaction_type)
+            # original_marital_status = next((k for k, v in marital_status_map.items() if v == marital_status), marital_status)
+            # original_device_info = next((k for k, v in device_info_map.items() if v == device_info), device_info)
 
 
             input_data = pd.DataFrame([{
@@ -289,12 +293,12 @@ elif page == "Análise de Transação (Simulação)":
                 'transaction_hour': transaction_hour,
                 'transaction_day_of_week': transaction_day_of_week,
                 'customer_age_at_transaction': customer_age_at_transaction,
-                'transaction_type': original_transaction_type, # Usar o original para o encoder
+                'transaction_type': transaction_type, # Usar o valor direto do selectbox
                 'merchant_category': merchant_category,
                 'location': location,
-                'device_info': original_device_info, # Usar o original para o encoder
+                'device_info': device_info, # Usar o valor direto do selectbox
                 'account_type': 'Unknown', # Não há input para isso, mantém como Unknown
-                'marital_status': original_marital_status, # Usar o original para o encoder
+                'marital_status': marital_status, # Usar o valor direto do selectbox
                 'profession': profession,
                 'customer_segment': 0 # Este valor é um placeholder e não é usado no modelo de fraude
             }])
@@ -420,4 +424,3 @@ elif page == "Perfil do Cliente":
                 st.write("Nenhuma transação encontrada para este cliente.")
         else:
             st.warning("Cliente não encontrado. Verifique o ID.")
-
